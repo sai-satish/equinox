@@ -11,6 +11,24 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from config import DatabaseSettings, JWTSettings
+from pydantic import ValidationError
+from datetime import timedelta
+
+
+try:
+    db_conf = DatabaseSettings()
+    jwt_conf = JWTSettings()
+except ValidationError as e:
+    raise Exception(f"Database Environment validation failed:\n{e}")
+
+
+try:
+    jwt_conf = JWTSettings()
+except ValidationError as e:
+    raise Exception(f"JWT Environment validation failed:\n{e}")
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +38,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m1(l41e$%!=!-=9rs0y2%80d06-q#1#&rx*0!cmc92ukrm41%d'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -74,8 +91,12 @@ WSGI_APPLICATION = 'equinox.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': db_conf.DB_NAME,
+        'USER': db_conf.DB_USER,
+        'PASSWORD': db_conf.DB_PASSWORD,
+        'HOST': db_conf.DB_HOST,
+        'PORT': db_conf.DB_PORT,
     }
 }
 
@@ -120,3 +141,36 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+}
+
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+]
+
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=jwt_conf.ACCESS_TOKEN_MINUTES),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=jwt_conf.REFRESH_TOKEN_DAYS),
+
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+
+
+    "SIGNING_KEY": jwt_conf.SIGNING_KEY,
+    "ALGORITHM": jwt_conf.ALGORITHM,
+
+    "USER_ID_FIELD": jwt_conf.USER_ID_FIELD,
+    "USER_ID_CLAIM": jwt_conf.USER_ID_CLAIM,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+
+    "UPDATE_LAST_LOGIN": True,
+    "LEEWAY": jwt_conf.LEEWAY,
+}
