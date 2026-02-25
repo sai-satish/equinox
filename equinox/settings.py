@@ -18,7 +18,6 @@ from datetime import timedelta
 
 try:
     db_conf = DatabaseSettings()
-    jwt_conf = JWTSettings()
 except ValidationError as e:
     raise Exception(f"Database Environment validation failed:\n{e}")
 
@@ -48,6 +47,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'authentication',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -142,6 +142,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+AUTH_USER_MODEL = "authentication.AuthUser"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
