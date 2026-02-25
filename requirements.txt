@@ -1,0 +1,7 @@
+Django
+pydantic
+pydantic-settings
+python-dotenv
+djangorestframework
+psycopg[binary]
+bcrypt
