@@ -11,9 +11,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from config import DatabaseSettings, JWTSettings
+from config import DatabaseSettings, JWTSettings, DjangoSettings
 from pydantic import ValidationError
 from datetime import timedelta
+
+try:
+    django_conf = DjangoSettings()
+except ValidationError as e:
+    raise Exception(f"Database Environment validation failed:\n{e}")
 
 
 try:
@@ -48,6 +53,9 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'authentication',
+    'executive',
+    'finance',
+    'rest_framework_simplejwt.token_blacklist',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -175,3 +183,9 @@ SIMPLE_JWT = {
     "UPDATE_LAST_LOGIN": True,
     "LEEWAY": jwt_conf.LEEWAY,
 }
+
+FERNET_KEYS = [
+    django_conf.FERNET_SECRET_KEY
+]
+
+SECRET_KEY = django_conf.DJANGO_SECRET_KEY

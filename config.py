@@ -1,6 +1,15 @@
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+class DjangoSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
+
+    DJANGO_SECRET_KEY: str
+    FERNET_SECRET_KEY: str
+
 
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(

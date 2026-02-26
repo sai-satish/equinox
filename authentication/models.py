@@ -8,8 +8,8 @@ from django.contrib.auth.models import (
 )
 from django.utils import timezone
 import uuid
+from fernet_fields import EncryptedTextField
 
-# Create your models here.
 
 class AuditQuerySet(models.QuerySet):
     def delete(self) -> tuple[int, dict[str, int]]:
@@ -45,8 +45,13 @@ class AuditModel(models.Model):
     class Meta:
         abstract = True
 
-    def delete(self, using=None, keep_parents=False):
-        return self.__class__.objects.filter(pk=self.pk).delete()
+    def delete(self, using=None, keep_parents=False) -> tuple[int, dict[str, int]]:
+        if self.deleted_at is not None:
+            return (0, {self.__class__.__name__: 0})
+
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at"])
+        return (1, {self.__class__.__name__: 1})
 
     def hard_delete(self, using=None, keep_parents=False):
         return super().delete(using=using, keep_parents=keep_parents)
@@ -56,7 +61,7 @@ class AuditModel(models.Model):
         self.save(update_fields=["deleted_at"])
     
 
-class AuthUserManager(BaseUserManager):
+class AuthUserManager(BaseUserManager, AuditManager):
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -131,19 +136,22 @@ class AuthUser(AbstractBaseUser, PermissionsMixin, AuditModel):
         help_text="Specific permissions for this user.",
         verbose_name="user permissions",
     )
+
+    failed_login_attempts = models.PositiveIntegerField(default=0)
+    last_failed_login = models.DateTimeField(null=True, blank=True)
+    is_locked = models.BooleanField(default=False)
     
     class Meta(AuditModel.Meta):
-        db_table = 'auth_users'
+        db_table = "auth_users"
         indexes = [
-            models.Index(fields=["email"]),
         ]
 
 
 class UserProfile(AuditModel):
     user = models.OneToOneField(
-        AuthUser, 
+        "authentication.AuthUser", 
         on_delete=models.CASCADE, 
-        related_name='profile'
+        related_name="profile"
     )
 
     first_name = models.CharField(max_length=50, blank=True)
@@ -152,14 +160,19 @@ class UserProfile(AuditModel):
     is_phone_verified = models.BooleanField(default=False)
     date_of_birth = models.DateField(null=True, blank=True)
     profile_image = models.CharField(max_length=500, null=True, blank=True)
+    organization = models.ForeignKey(
+        "executive.Organization",
+        on_delete=models.PROTECT,
+        db_index=True,
+    )
 
     def __str__(self):
         return f"{self.user.email} - {self.first_name} {self.last_name}"
     
     class Meta(AuditModel.Meta):
-        db_table = 'user_profiles'
+        db_table = "user_profiles"
         indexes = [
-            models.Index(fields=["user"]),
+            models.Index(fields=["organization", "user"]),
         ]
 
 
@@ -176,7 +189,7 @@ class SocialAccount(AuditModel):
     )
 
     user = models.ForeignKey(
-        AuthUser,
+        "authentication.AuthUser",
         on_delete=models.CASCADE,
         related_name="social_accounts"
     )
@@ -186,20 +199,63 @@ class SocialAccount(AuditModel):
     # Unique ID from provider
     provider_user_id = models.CharField(max_length=255)
 
-    access_token = models.TextField(null=True, blank=True)
-    refresh_token = models.TextField(null=True, blank=True)
-    id_token = models.TextField(null=True, blank=True)
+    access_token = EncryptedTextField(null=True, blank=True)
+    refresh_token = EncryptedTextField(null=True, blank=True)
+    id_token = EncryptedTextField(null=True, blank=True)
 
     token_expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta(AuditModel.Meta):
-        db_table = 'social_accounts'
+        db_table = "social_accounts"
         unique_together = ("provider", "provider_user_id")
         indexes = [
             models.Index(fields=["provider", "provider_user_id"]),
-            models.Index(fields=["user"]),
+            models.Index(fields=["user", "provider"]),
         ]
 
     def __str__(self):
         return f"{self.provider} - {self.user.email}"
 
+
+class LoginLog(models.Model):
+    email = models.EmailField()
+    login_attempt_time = models.DateTimeField(auto_now_add=True)
+    login_status = models.BooleanField()
+    login_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    failure_reason = models.CharField(max_length=255, null=True, blank=True)
+    is_mfa_authenticated = models.BooleanField(default=False)
+
+    class Meta(AuditModel.Meta):
+        db_table = "login_logs"
+        verbose_name = "Login Log"
+        verbose_name_plural = "Login Logs"
+        ordering = ["-login_attempt_time"]
+        indexes = [
+            models.Index(fields=["email", "login_attempt_time"]),
+        ]
+
+
+class UserPasswordHistory(models.Model):
+    user = models.ForeignKey(
+        "authentication.AuthUser",
+        on_delete=models.DO_NOTHING,
+        db_column="user_id"
+    )
+    password_hash = models.TextField()
+    created_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "user_password_history"
+        managed = False
+
+
+class MFADevice(AuditModel):
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE)
+    device_name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    is_primary = models.BooleanField(default=False)
+    
+    class Meta(AuditModel.Meta):
+        unique_together = ("user", "device_name")
