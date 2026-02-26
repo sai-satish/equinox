@@ -5,3 +5,5 @@ python-dotenv
 djangorestframework
 psycopg[binary]
 bcrypt
+django-fernet-fields
+djangorestframework-simplejwt
