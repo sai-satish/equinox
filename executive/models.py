@@ -7,6 +7,7 @@ import uuid
 class Organization(AuditModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     organization_name = models.CharField(max_length=255, unique=True)
+    domain_name = models.CharField(max_length=255, unique=True)
     support_email = models.EmailField(null=True, blank=True)
     support_phone = models.CharField(max_length=20, null=True, blank=True)
 
