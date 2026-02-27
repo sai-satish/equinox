@@ -10,6 +10,8 @@ class SubscriptionStatus(models.Model):
 
     class Meta:
         db_table = "subscription_status_lookup"
+        verbose_name = "Subscription Status"
+        verbose_name_plural = "Subscription Status"
 
     def __str__(self):
         return self.status_name

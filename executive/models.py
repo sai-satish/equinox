@@ -49,16 +49,20 @@ class Organization(AuditModel):
 
 class Role(AuditModel):
     id = models.SmallAutoField(primary_key=True)
-    role_name = models.CharField(max_length=50, unique=True)
+    role_name = models.CharField(max_length=50)
     organization = models.ForeignKey(
         "executive.Organization",
         on_delete=models.CASCADE,
         db_index=True,
+        null=True,
     )
 
     class Meta(AuditModel.Meta):
         db_table = "roles"
         unique_together = ("role_name", "organization")
+
+    def __str__(self):
+        return f"{self.role_name} - {self.organization.organization_name if self.organization else 'No Organization'}"
 
 
 class Permission(AuditModel):

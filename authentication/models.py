@@ -155,7 +155,7 @@ class UserProfile(AuditModel):
     )
 
     first_name = models.CharField(max_length=50, blank=True)
-    last_name = models.CharField(max_length=50, blank=True)
+    last_name = models.CharField(max_length=50, blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True)
     is_phone_verified = models.BooleanField(default=False)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -243,11 +243,10 @@ class UserPasswordHistory(models.Model):
         db_column="user_id"
     )
     password_hash = models.TextField()
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "user_password_history"
-        managed = False
 
 
 class MFADevice(AuditModel):
