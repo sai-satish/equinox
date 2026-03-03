@@ -2,7 +2,6 @@ from django.db import models
 from authentication.models import AuditModel
 import uuid
 
-# Create your models here.
 
 class SubscriptionStatus(models.Model):
     id = models.SmallAutoField(primary_key=True)
@@ -188,3 +187,62 @@ class Category(AuditModel):
     def __str__(self):
         return self.category_name
 
+
+class BudgetApprovalStatus(AuditModel):
+    # Pending/Approved/Rejected/Escalated
+    id = models.SmallAutoField(primary_key=True)
+    status_name = models.CharField(max_length=50, unique=True)
+
+    class Meta(AuditModel.Meta):
+        db_table = "budget_approval_status_lookup"
+        verbose_name = "Budget Approval Status"
+        verbose_name_plural = "Budget Approval Status"
+
+    def __str__(self):
+        return self.status_name
+
+
+class BudgetRequest(AuditModel):
+    id = models.UUIDField(
+        primary_key = True,
+        default=uuid.uuid4,
+    )
+
+    organization = models.ForeignKey(
+        "executive.Organization",
+        on_delete= models.PROTECT,
+    )
+    
+    requested_by = models.ForeignKey(
+        "executive.OrganizationUser",
+        on_delete= models.PROTECT,
+    )
+    
+    team = models.ForeignKey(
+        "executive.Team",
+        on_delete= models.PROTECT,
+        null=True,
+        blank=True,
+    )
+
+    amount_requested = models.DecimalField(max_digits=14, decimal_places=2)
+    category = models.ForeignKey(
+        "finance.Category",
+        on_delete=models.PROTECT,
+        
+    )
+    description = models.TextField()
+
+    status = models.ForeignKey(
+        "finance.BudgetApprovalStatus",
+        on_delete=models.SET_NULL,
+    )
+
+    approved_by = models.ForeignKey(
+        "executive.OrganizationUser",
+        on_delete= models.PROTECT,
+        null=True,
+        blank=True,
+    )
+
+    receipt_url = models.TextField(null=True, blank=True)
