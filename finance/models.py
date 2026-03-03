@@ -216,6 +216,7 @@ class BudgetRequest(AuditModel):
     requested_by = models.ForeignKey(
         "executive.OrganizationUser",
         on_delete= models.PROTECT,
+        related_name="requested_by_user",
     )
     
     team = models.ForeignKey(
@@ -236,6 +237,9 @@ class BudgetRequest(AuditModel):
     status = models.ForeignKey(
         "finance.BudgetApprovalStatus",
         on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="budget_request_status",
     )
 
     approved_by = models.ForeignKey(
@@ -243,6 +247,7 @@ class BudgetRequest(AuditModel):
         on_delete= models.PROTECT,
         null=True,
         blank=True,
+        related_name="approved_by_user",
     )
 
     receipt_url = models.TextField(null=True, blank=True)
