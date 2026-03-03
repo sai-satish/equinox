@@ -56,6 +56,7 @@ class Role(AuditModel):
         db_index=True,
         null=True,
     )
+    role_level = models.PositiveSmallIntegerField()
 
     class Meta(AuditModel.Meta):
         db_table = "roles"
@@ -252,6 +253,8 @@ class Team(AuditModel):
         "executive.OrganizationUser",
         on_delete=models.PROTECT,
         db_column="manager_teams",
+        null=True,
+        blank=True,
     )
 
     account_balance = models.DecimalField(
